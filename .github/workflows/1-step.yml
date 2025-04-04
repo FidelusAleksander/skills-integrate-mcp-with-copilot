@@ -1,0 +1,166 @@
+name: Step 1
+
+on:
+  push:
+    paths:
+      - ".vscode/mcp.json"
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+env:
+  STEP_2_FILE: ".github/steps/2-step.md"
+
+jobs:
+  find_exercise:
+    name: Find Exercise Issue
+    uses: skills/exercise-toolkit/.github/workflows/find-exercise-issue.yml@v0.1.0
+
+  check_step_work:
+    name: Check step work
+    runs-on: ubuntu-latest
+    needs: find_exercise
+    env:
+      ISSUE_URL: ${{ needs.find_exercise.outputs.issue-url }}
+
+    steps:
+      - name: Get response templates
+        uses: actions/checkout@v4
+        with:
+          repository: skills/exercise-toolkit
+          path: exercise-toolkit
+          ref: v0.1.0
+
+      - name: Update comment - checking work
+        run: |
+          gh issue comment "$ISSUE_URL" \
+            --body-file exercise-toolkit/markdown-templates/step-feedback/checking-work.md \
+            --edit-last
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # TODO: Check for keywords (github, server)?
+      - name: Build message - step finished
+        id: build-message-step-finish
+        uses: skills/action-text-variables@v1
+        with:
+          template-file: exercise-toolkit/markdown-templates/step-feedback/step-finished-prepare-next-step.md
+          template-vars: |
+            next_step_number=2
+
+      - name: Update comment - step finished
+        run: |
+          gh issue comment "$ISSUE_URL" \
+            --body "$ISSUE_BODY" \
+            --edit-last
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_BODY: ${{ steps.build-message-step-finish.outputs.updated-text }}
+
+  create_bug_report:
+    name: Create bug report
+    needs: [check_step_work]
+    runs-on: ubuntu-latest
+
+    outputs:
+      bug-report-url: ${{ steps.create-bug-issue.outputs.bug_report_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create bug issue
+        id: create-bug-issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const bugReport = `
+            # 🚨 Missing GitHub Skills Activity
+
+            ## 🐛 Description of the Issue
+            The GitHub Skills activity announced by our principal is missing from the school activities signup page.
+
+            Yesterday in the school assembly, the principal announced a new partnership with GitHub to teach students practical coding and collaboration skills. However, when I try to sign up for this activity, it's nowhere to be found on the website.
+
+            I can see the following activities:
+            - ✅ Chess Club
+            - ✅ Programming Class
+            - ✅ Gym Class
+
+            But there is:
+            - ❌ NO GitHub Skills activity
+
+            ## ⏱️ Timeline
+            This is time-sensitive as the announcement mentioned registrations would close by the end of this week. Many students are eager to join as it may help with college applications.
+
+            ## 💡 Expected Outcome
+            The GitHub Skills activity should be added to the system and available for registration like other activities
+
+            Mona
+            11th Grade Student
+            mona@mergington.edu
+            `;
+
+            const response = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔍 Missing GitHub Skills Activity on School Website',
+              body: bugReport,
+              labels: ['bug']
+            });
+
+            console.log(`Bug report created: ${response.data.html_url}`);
+            core.setOutput('bug_report_url', response.data.html_url);
+
+  post_next_step_content:
+    name: Post next step content
+    needs: [find_exercise, check_step_work, create_bug_report]
+    runs-on: ubuntu-latest
+    env:
+      ISSUE_URL: ${{ needs.find_exercise.outputs.issue-url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get response templates
+        uses: actions/checkout@v4
+        with:
+          repository: skills/exercise-toolkit
+          path: exercise-toolkit
+          ref: v0.1.0
+
+      - name: Build comment - add step content
+        id: build-comment
+        uses: skills/action-text-variables@v1
+        with:
+          template-file: ${{ env.STEP_2_FILE }}
+          template-vars: |
+            full_repo_name=${{ github.repository }}
+            bug_report_url=${{ needs.create_bug_report.outputs.bug-report-url }}
+
+      - name: Create comment - add step content
+        run: |
+          gh issue comment "$ISSUE_URL" \
+            --body "$ISSUE_BODY"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_BODY: ${{ steps.build-comment.outputs.updated-text }}
+
+
+      - name: Create comment - watching for progress
+        run: |
+          gh issue comment "$ISSUE_URL" \
+            --body-file exercise-toolkit/markdown-templates/step-feedback/watching-for-progress.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Disable current workflow and enable next one
+        run: |
+          gh workflow disable "Step 1"
+          gh workflow enable "Step 2"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
