@@ -1,0 +1,19 @@
+{
+    "servers": {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:githubToken}"
+        }
+      }
+    },
+    "inputs": [
+      {
+        "type": "promptString",
+        "id": "githubToken",
+        "description": "Enter your GitHub personal access token",
+        "password": true
+      }
+    ]
+}
