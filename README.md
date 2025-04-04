@@ -1,4 +1,16 @@
-# Integrate MCP with GitHub Copilot
+<img src="https://octodex.github.com/images/welcometocat.png" align="right" height="250px" />
+
+⭐️ Congratulations FidelusAleksander! ⭐️
+
+You completed this exercise! Nice work! 🥳
+
+If you would like to practice again, you can retrace your steps below. Just press the **Start Exercise** button again.
+
+> [!TIP]
+> Mona won't grade you this time! 😉
+
+
+ # Integrate MCP with GitHub Copilot
 
 ![](https://github.com/FidelusAleksander/skills-integrate-mcp-with-copilot/actions/workflows/1-step.yml/badge.svg)
 ![](https://github.com/FidelusAleksander/skills-integrate-mcp-with-copilot/actions/workflows/2-step.yml/badge.svg)
